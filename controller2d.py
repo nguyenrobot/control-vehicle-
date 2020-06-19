@@ -126,7 +126,7 @@ class Controller2D(object):
         v               = self._current_speed
         self.update_desired_speed()
         self.update_desired_pos()
-        v_desired       = self._desired_speed
+        v_desired       = self._desired_speed        
         x_desired       = self._desired_x
         y_desired       = self._desired_y
         t               = self._current_timestamp
@@ -208,7 +208,7 @@ class Controller2D(object):
             # Change these outputs with the longitudinal controller. Note that
             # brake_output is optional and is not required to pass the
             # assignment, as the car will naturally slow down over time.
-            
+            v_previous      = self.vars.v_previous
             control_throttle = 0.05*(v_desired - v) + 0.05*(v_desired - v_previous)/(1/30)
             
             if np.abs(control_throttle) > 1:
@@ -220,36 +220,34 @@ class Controller2D(object):
             else:
                 throttle_output = 0
                 brake_output    = np.abs(control_throttle)
-
             ######################################################
             ######################################################
             # MODULE 7: IMPLEMENTATION OF LATERAL CONTROLLER HERE
             ######################################################
             ######################################################
-            """
-                Implement a lateral controller here. Remember that you can
-                access the persistent variables declared above here. For
-                example, can treat self.vars.v_previous like a "global variable".
-            """
+            # """
+            #     Implement a lateral controller here. Remember that you can
+            #     access the persistent variables declared above here. For
+            #     example, can treat self.vars.v_previous like a "global variable".
+            # """
             # the distance between the center position to the front axle of the vehicle is 1.5 meters.
-            
             alpha           = np.arctan((y_desired - y)/(x_desired- x))
             l_a             = np.linalg.norm(np.array([x_desired- x, y_desired - y]))
-            turning_radius  = np.abs(l_a/(2*np.sin(alpha))
-            #L_long         = float(1.5)
+            turning_radius  = np.abs(l_a/(2*np.sin(alpha)))
+            L_long         = float(1.5)
             steering_ab = np.arctan(1.5/turning_radius)
-            # Change the steer output with the lateral controller.
-            sign = -1
+            #Change the steer output with the lateral controller.
+            sign_a = -1
             if alpha > 0:
-                sign = 1
+                sign_a = 1
+            steering_ab     = np.arctan(1.5/turning_radius)
             if steering_ab > 1.22:
                 steering_ab = 1.22
-                
-            steer_output    = sign * steering_ab
+            steer_output    = sign_a * steering_ab
 
-            ######################################################
-            # SET CONTROLS OUTPUT
-            ######################################################
+            # ######################################################
+            # # SET CONTROLS OUTPUT
+            # ######################################################
             self.set_throttle(throttle_output)  # in percent (0 to 1)
             self.set_steer(steer_output)        # in rad (-1.22 to 1.22)
             self.set_brake(brake_output)        # in percent (0 to 1)
@@ -259,9 +257,10 @@ class Controller2D(object):
         # MODULE 7: STORE OLD VALUES HERE (ADD MORE IF NECESSARY)
         ######################################################
         ######################################################
-        """
-            Use this block to store old values (for example, we can store the
-            current x, y, and yaw values here using persistent variables for use
-            in the next iteration)
-        """
+        # """
+        #     Use this block to store old values (for example, we can store the
+        #     current x, y, and yaw values here using persistent variables for use
+        #     in the next iteration)
+        # """
         self.vars.v_previous = v  # Store forward speed to be used in next step
+        
