@@ -73,6 +73,7 @@ class Controller2D(object):
         desired_y     = 0
         
         look_ahead_dist     = self._current_speed * 20 * (1/30)
+        look_ahead_dist     = max(look_ahead_dist, 15)
         look_ahead_pos_x    = self._current_x + look_ahead_dist*np.cos(self._current_yaw)
         look_ahead_pos_y    = self._current_y + look_ahead_dist*np.sin(self._current_yaw)
         
@@ -88,9 +89,12 @@ class Controller2D(object):
             desired_y     = self._waypoints[min_idx][1]
         else:
             desired_x     = self._waypoints[-1][0]
-            desired_y     = self._waypoints[-1][1]            
+            desired_y     = self._waypoints[-1][1]
+            
         self._desired_x     = desired_x
         self._desired_y     = desired_y
+        self._look_ahead_pos_x    = look_ahead_pos_x
+        self._look_ahead_pos_y     = look_ahead_pos_y        
         
     def update_waypoints(self, new_waypoints):
         self._waypoints = new_waypoints
@@ -129,14 +133,15 @@ class Controller2D(object):
         v_desired       = self._desired_speed        
         x_desired       = self._desired_x
         y_desired       = self._desired_y
+        
+        look_ahead_pos_x = self._look_ahead_pos_x
+        look_ahead_pos_y = self._look_ahead_pos_y
         t               = self._current_timestamp
         waypoints       = self._waypoints
         throttle_output = 0
         steer_output    = 0
-        brake_output    = 0
+        brake_output    = 0       
         
-        
-
         ######################################################
         ######################################################
         # MODULE 7: DECLARE USAGE VARIABLES HERE
@@ -209,7 +214,7 @@ class Controller2D(object):
             # brake_output is optional and is not required to pass the
             # assignment, as the car will naturally slow down over time.
             v_previous      = self.vars.v_previous
-            control_throttle = 0.05*(v_desired - v) + 0.05*(v_desired - v_previous)/(1/30)
+            control_throttle = 0.4*(v_desired - v) + 0.05*(v_desired - v_previous)/(1/30) # + 0.5*v/v_desired # 
             
             if np.abs(control_throttle) > 1:
                 control_throttle = control_throttle/np.abs(control_throttle)
@@ -220,6 +225,9 @@ class Controller2D(object):
             else:
                 throttle_output = 0
                 brake_output    = np.abs(control_throttle)
+            #throttle_output         = 0.25
+            #brake_output            = 0
+            
             ######################################################
             ######################################################
             # MODULE 7: IMPLEMENTATION OF LATERAL CONTROLLER HERE
@@ -231,19 +239,37 @@ class Controller2D(object):
             #     example, can treat self.vars.v_previous like a "global variable".
             # """
             # the distance between the center position to the front axle of the vehicle is 1.5 meters.
-            alpha           = np.arctan((y_desired - y)/(x_desired- x))
-            l_a             = np.linalg.norm(np.array([x_desired- x, y_desired - y]))
-            turning_radius  = np.abs(l_a/(2*np.sin(alpha)))
-            L_long         = float(1.5)
-            steering_ab = np.arctan(1.5/turning_radius)
-            #Change the steer output with the lateral controller.
-            sign_a = -1
-            if alpha > 0:
-                sign_a = 1
-            steering_ab     = np.arctan(1.5/turning_radius)
-            if steering_ab > 1.22:
-                steering_ab = 1.22
-            steer_output    = sign_a * steering_ab
+            # alpha           = -yaw + np.arctan((y_desired - y)/(x_desired- x))
+            # l_a             = np.linalg.norm(np.array([x_desired- x, y_desired - y]))
+            # turning_radius  = np.abs(l_a/(2*np.sin(alpha)))
+            # L_long          = float(1.5)
+            # steering_ab = np.arctan(1.5/turning_radius)
+            
+            #steering_ab =  yaw  - np.arctan((y_desired - y)/(x_desired- x))
+            x_steer = (y_desired - y)*np.sin(yaw) + (x_desired - x)*np.cos(yaw)
+            y_steer = (y_desired - y)*np.cos(yaw) - (x_desired - x)*np.sin(yaw)
+            
+            desired_heading_raw = np.arctan(y_steer/x_steer)
+            # yaw_processed = yaw
+            
+            # if yaw_processed*desired_heading_raw < 0:
+                # desired_heading_raw = desired_heading_raw + np.pi*np.sign(yaw_processed)
+
+            steering_ab = desired_heading_raw
+            
+            if np.abs(steering_ab) > 1.22:
+                steering_ab = np.sign(steering_ab)*1.22
+                
+            # #Change the steer output with the lateral controller.
+            # sign_a = -1
+            # if alpha > 0:
+                # sign_a = 1
+            # steering_ab     = np.arctan(1.5/turning_radius)
+            # if np.abs(steering_ab) > 1.22:
+                # steering_ab = np.sign(steering_ab)*1.22
+                
+            steer_output    = steering_ab
+            #steer_output    = sign_a * steering_ab          
 
             # ######################################################
             # # SET CONTROLS OUTPUT
