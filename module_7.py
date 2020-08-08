@@ -42,7 +42,7 @@ Configurable params
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
 WAIT_TIME_BEFORE_START = 5.00   # game seconds (time before controller start)
 TOTAL_RUN_TIME         = 200.00 # game seconds (total runtime before sim end)
-TOTAL_FRAME_BUFFER     = 300    # number of frames to buffer after total runtime
+TOTAL_FRAME_BUFFER     = 800000    # number of frames to buffer after total runtime
 NUM_PEDESTRIANS        = 0      # total number of pedestrians to spawn
 NUM_VEHICLES           = 0      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
@@ -176,10 +176,13 @@ def get_start_pos(scene):
         y: Y position in meters
         yaw: Yaw position in radians
     """
-    x = scene.player_start_spots[0].location.x
-    y = scene.player_start_spots[0].location.y
-    yaw = math.radians(scene.player_start_spots[0].rotation.yaw)
-
+    # x = scene.player_start_spots[0].location.x
+    # y = scene.player_start_spots[0].location.y
+    # yaw = math.radians(scene.player_start_spots[0].rotation.yaw)
+    x = -184
+    y = 80
+    yaw = +np.pi/2
+    
     return (x, y, yaw)
 
 def send_control_command(client, throttle, steer, brake, 
@@ -245,6 +248,7 @@ def exec_waypoint_nav_demo(args):
         # CarlaSettings.ini file as string.
         scene = client.load_settings(settings)
 
+        #client.set_timeout(50000.0)
         # Refer to the player start folder in the WorldOutliner to see the 
         # player start information
         player_start = PLAYER_START_INDEX
@@ -390,7 +394,8 @@ def exec_waypoint_nav_demo(args):
               str(SIMULATION_TIME_STEP))
         TOTAL_EPISODE_FRAMES = int((TOTAL_RUN_TIME + WAIT_TIME_BEFORE_START) /\
                                SIMULATION_TIME_STEP) + TOTAL_FRAME_BUFFER
-
+        print("TOTAL_EPISODE_FRAMES: " + \
+              str(TOTAL_EPISODE_FRAMES))
         #############################################
         # Frame-by-Frame Iteration and Initialization
         #############################################
@@ -486,6 +491,11 @@ def exec_waypoint_nav_demo(args):
         steer_fig.add_graph("steer", 
                               label="steer", 
                               window_size=TOTAL_EPISODE_FRAMES)
+        # Add yaw graph
+        yaw_fig = lp_1d.plot_new_dynamic_figure(title="Yaw and Steering")
+        yaw_fig.add_graph("yaw", 
+                              label="yaw", 
+                              window_size=TOTAL_EPISODE_FRAMES)
 
         # live plotter is disabled, hide windows
         if not enable_live_plot:
@@ -533,6 +543,7 @@ def exec_waypoint_nav_demo(args):
             # lookahead distance from the closest point to the car. Provide
             # a set of waypoints behind the car as well.
             
+            print('waypoint_subset_first_index .. frame ..', frame)
             # Find closest waypoint index to car. First increment the index
             # from the previous index until the new distance calculations
             # are increasing. Apply the same rule decrementing the index.
@@ -582,7 +593,8 @@ def exec_waypoint_nav_demo(args):
                 if waypoint_subset_last_index >= waypoints_np.shape[0]:
                     waypoint_subset_last_index = waypoints_np.shape[0] - 1
                     break
-
+            
+            print('controller.update_waypoints .. frame ..', frame)
             # Use the first and last waypoint subset indices into the hash
             # table to obtain the first and last indicies for the interpolated
             # list. Update the interpolated waypoints to the controller
@@ -627,7 +639,7 @@ def exec_waypoint_nav_demo(args):
                 throttle_fig.roll("throttle", current_timestamp, cmd_throttle)
                 brake_fig.roll("brake", current_timestamp, cmd_brake)
                 steer_fig.roll("steer", current_timestamp, cmd_steer)
-
+                yaw_fig.roll("yaw", current_timestamp, current_yaw)
                 # Refresh the live plot based on the refresh rate 
                 # set by the options
                 if enable_live_plot and \
@@ -635,7 +647,7 @@ def exec_waypoint_nav_demo(args):
                     lp_traj.refresh()
                     lp_1d.refresh()
                     live_plot_timer.lap()
-
+            print('send_control_command        .. frame ..', frame)
             # Output controller command to CARLA server
             send_control_command(client,
                                  throttle=cmd_throttle,
